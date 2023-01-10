@@ -1,0 +1,41 @@
+
+  # Access the id_github file from Secret Manager, and setup SSH
+steps:
+  - name: 'gcr.io/cloud-builders/git'
+    secretEnv: ['SSH_KEY1']
+    entrypoint: 'bash'
+    args:
+    - -c
+    - |
+      echo "$$SSH_KEY1" >> /root/.ssh/id_rsa
+      chmod 400 /root/.ssh/id_rsa
+      ssh-keyscan -t rsa github.com > known_hosts.github
+      cp known_hosts.github /root/.ssh/known_hosts
+# cat known_hosts.github 
+    volumes:
+    - name: 'ssh'
+      path: /root/.ssh
+  
+# Clone the repository
+  - name: 'gcr.io/cloud-builders/git'
+    args:
+    - clone
+    - git@github.com:FutureGeneraliBusinessIntelligence/fgli-dataflow-code-dummy-dev.git
+    volumes:
+    - name: 'ssh'
+      path: /root/.ssh
+  
+  - name: 'gcr.io/cloud-builders/mvn'
+    entrypoint: mvn
+    args:
+      - compile
+      - exec:java
+      - -Dexec.mainClass=org.example.Main
+      - "-Dexec.args=--project=fg-dt-lumiq-dev --region=asia-south1 --runner=DataflowRunner --gcpTempLocation=gs://dev_fgli/temp_files/ --templateLocation=gs://fg-code/template/Dataflow/loomiq-38"
+
+
+availableSecrets:
+    secretManager:
+    - versionName: projects/579147652001/secrets/SSH_KEY1/versions/latest
+      env: 'SSH_KEY1'
+
